@@ -60,7 +60,7 @@ void add(const char *hunt_id) {
     printf("Am adaugat comoara cu id-ul %d\n", t.treasureID);
 }
 
-void list (const char *hunt_id){
+void list(const char *hunt_id){
     char path[256];
     snprintf(path, sizeof(path), "%s/treasures.dat", hunt_id);
 
@@ -84,6 +84,63 @@ void list (const char *hunt_id){
                t.treasureID, t.username, t.c.x, t.c.y, t.clue, t.value);
     }
     fclose(f);
+}
+
+void view(const char *hunt_id, int id) {
+    char path[256];
+    snprintf(path, sizeof(path), "%s/treasures.dat", hunt_id);
+
+    FILE *f = fopen(path, "rb");
+    if (!f) { 
+        perror("fopen"); 
+        return; 
+    }
+
+    Treasure t;
+    int found = 0;
+    while (fread(&t, sizeof(Treasure), 1, f) == 1) {
+        if (t.treasureID == id) {
+            printf("ID: %d\nUser: %s\nCoords: (%.2f, %.2f)\nClue: %s\nValue: %d\n",
+                   t.treasureID, t.username, t.c.x, t.c.y, t.clue, t.value);
+            found = 1;
+            break;
+        }
+    }
+    
+    if (!found) printf("Treasure with ID %d not found.\n", id);
+    fclose(f);
+}
+
+void removeTreasure(const char *hunt_id, int id) {
+    char path[256];
+    snprintf(path, sizeof(path), "%s/treasures.dat", hunt_id);
+
+    FILE *f = fopen(path, "rb");
+    if (!f) { perror("fopen"); return; }
+
+    Treasure list[MAX_TREASURES];
+    int count = 0;
+    while (fread(&list[count], sizeof(Treasure), 1, f) == 1)
+        if (list[count].treasureID != id) count++;
+    fclose(f);
+
+    f = fopen(path, "wb");
+    if (!f) { perror("fopen write"); return; }
+    for (int i = 0; i < count; i++)
+        fwrite(&list[i], sizeof(Treasure), 1, f);
+    fclose(f);
+    printf("Removed treasure with ID %d if it existed.\n", id);
+}
+
+void removeHunt(const char *hunt_id) {
+    char path[256];
+    snprintf(path, sizeof(path), "%s/treasures.dat", hunt_id);
+    remove(path);
+    snprintf(path, sizeof(path), "%s", hunt_id);
+    if (rmdir(path) == 0)
+        printf("Removed hunt %s\n", hunt_id);
+    else
+        perror("rmdir");
 }
 
 int main(){
