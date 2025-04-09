@@ -60,6 +60,32 @@ void add(const char *hunt_id) {
     printf("Am adaugat comoara cu id-ul %d\n", t.treasureID);
 }
 
+void list (const char *hunt_id){
+    char path[256];
+    snprintf(path, sizeof(path), "%s/treasures.dat", hunt_id);
+
+    struct stat st;
+    if (stat(path, &st) == -1) {
+        perror("stat"); return;
+    }
+
+    printf("Hunt name: %s\n", hunt_id);
+    printf("File size: %lld bytes\n", st.st_size);
+    printf("Last modified: %s", ctime(&st.st_mtime));
+
+    FILE *f = fopen(path, "rb");
+    if (!f) { 
+        perror("fopen"); 
+        return; }
+
+    Treasure t;
+    while (fread(&t, sizeof(Treasure), 1, f) == 1) {
+        printf("\nID: %d\nUser: %s\nCoords: (%.2f, %.2f)\nClue: %s\nValue: %d\n",
+               t.treasureID, t.username, t.c.x, t.c.y, t.clue, t.value);
+    }
+    fclose(f);
+}
+
 int main(){
 
     return 0;
