@@ -4,6 +4,11 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/time.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <dirent.h>
+#include <time.h>
+#include <errno.h>
 
 #define MAX_TREASURES 100
 
@@ -106,7 +111,7 @@ void view(const char *hunt_id, int id) {
             break;
         }
     }
-    
+
     if (!found) printf("Treasure with ID %d not found.\n", id);
     fclose(f);
 }
@@ -143,7 +148,31 @@ void removeHunt(const char *hunt_id) {
         perror("rmdir");
 }
 
-int main(){
+int main(int argc, char *argv[]){
+
+    if (argc < 3) {
+        printf("Usage:\n");
+        printf("  %s --add <hunt_id>\n", argv[0]);
+        printf("  %s --list <hunt_id>\n", argv[0]);
+        printf("  %s --view <hunt_id> <id>\n", argv[0]);
+        printf("  %s --remove_treasure <hunt_id> <id>\n", argv[0]);
+        printf("  %s --remove_hunt <hunt_id>\n", argv[0]);
+        return 1;
+    }
+
+    if (strcmp(argv[1], "--add") == 0) {
+        add(argv[2]);
+    } else if (strcmp(argv[1], "--list") == 0) {
+        list(argv[2]);
+    } else if (strcmp(argv[1], "--view") == 0 && argc == 4) {
+        view(argv[2], atoi(argv[3]));
+    } else if (strcmp(argv[1], "--remove_treasure") == 0 && argc == 4) {
+        removeTreasure(argv[2], atoi(argv[3]));
+    } else if (strcmp(argv[1], "--remove_hunt") == 0) {
+        removeHunt(argv[2]);
+    } else {
+        printf("Invalid command.\n");
+    }
 
     return 0;
 }
