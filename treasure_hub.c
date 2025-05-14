@@ -27,6 +27,13 @@ void start_monitor() {
         return;
     }
 
+    // Scrie PID-ul treasure_manager (părinte) într-un fișier
+    FILE *pid_file = fopen(".manager_pid", "w");
+    if (pid_file) {
+        fprintf(pid_file, "%d\n", getppid());
+        fclose(pid_file);
+    }
+
     monitor_pid = fork();
     if (monitor_pid == 0) {
         execl("./monitor", "monitor", NULL);
