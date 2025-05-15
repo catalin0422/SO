@@ -27,7 +27,7 @@ void start_monitor() {
         return;
     }
 
-    // Scrie PID-ul treasure_manager (părinte) într-un fișier
+    // Scrie PID-ul treasure_manager parinte într-un fișier
     FILE *pid_file = fopen(".manager_pid", "w");
     if (pid_file) {
         fprintf(pid_file, "%d\n", getppid());

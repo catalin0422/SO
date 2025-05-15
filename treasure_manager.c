@@ -12,7 +12,7 @@ void handle_signal(int sig) {
     if (sig == SIGUSR1) {
         printf("Comori actualizate pentru vânătoarea monitorizată!\n");
     }
-}
+} 
 
 int main(int argc, char *argv[]) {
     if (argc < 2) {
@@ -26,14 +26,14 @@ int main(int argc, char *argv[]) {
         char *hunt_id = argv[2];
         char path[256];
 
-        // Creează directorul pentru vânătoare
+        // Creeaza directorul pentru vânătoare
         snprintf(path, sizeof(path), "%s", hunt_id);
         if (mkdir(path, 0777) == -1 && errno != EEXIST) {
             perror("mkdir");
             return 1;
         }
 
-        // Creează fișierul treasures.dat
+        // Creeaza fișierul treasures.dat
         snprintf(path, sizeof(path), "%s/treasures.dat", hunt_id);
         int fd = open(path, O_WRONLY | O_CREAT | O_TRUNC, 0666);
         if (fd == -1) {
@@ -55,20 +55,19 @@ int main(int argc, char *argv[]) {
             return 1;
         } else if (pid == 0) {
             // Copil
-            close(pipe_fd[1]); // Închide capătul de scriere
-            dup2(pipe_fd[0], STDIN_FILENO); // Redirecționează stdin către pipe
+            close(pipe_fd[1]); 
+            dup2(pipe_fd[0], STDIN_FILENO); 
             close(pipe_fd[0]);
             execlp("./treasure_hub", "./treasure_hub", NULL);
             perror("execlp");
             exit(1);
         } else {
-            // Părinte
-            close(pipe_fd[0]); // Închide capătul de citire
+            // Parinte
+            close(pipe_fd[0]); 
             write(pipe_fd[1], hunt_id, strlen(hunt_id));
             write(pipe_fd[1], "\n", 1);
             close(pipe_fd[1]);
 
-            // Așteaptă semnal de la copil (se poate folosi și un loop în proiect complet)
             pause();
         }
     } else {
