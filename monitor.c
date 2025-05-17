@@ -1,5 +1,3 @@
-// monitor.c - Reads commands from stdin and outputs results
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

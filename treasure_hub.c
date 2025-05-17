@@ -1,5 +1,3 @@
-// treasure_hub.c - Phase 3 implementation (no cmd.txt/resp.txt)
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
