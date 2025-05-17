@@ -1,87 +1,100 @@
+// monitor.c - Reads commands from stdin and outputs results
+
 #include <stdio.h>
 #include <stdlib.h>
-#include <signal.h>
-#include <unistd.h>
 #include <string.h>
+#include <dirent.h>
 #include <sys/stat.h>
-#include <time.h>
+#include <fcntl.h>
+#include <unistd.h>
 
-volatile sig_atomic_t got_command = 0;
-volatile sig_atomic_t stop = 0;
-pid_t manager_pid = -1;
+#define MAX_LINE 256
+#define TREASURE_FILE "treasures.dat"
 
-void usr1_handler(int sig) {
-    got_command = 1;
+struct Treasure {
+    char id[16];
+    char user[32];
+    double lat;
+    double lon;
+    char clue[64];
+    int value;
+};
+
+void list_hunts() {
+    DIR *d = opendir(".");
+    if (!d) return;
+    struct dirent *ent;
+    while ((ent = readdir(d))) {
+        if (ent->d_type == DT_DIR && strncmp(ent->d_name, "Hunt", 4) == 0) {
+            char path[128];
+            snprintf(path, sizeof(path), "%s/%s", ent->d_name, TREASURE_FILE);
+            int fd = open(path, O_RDONLY);
+            if (fd < 0) continue;
+            struct Treasure t;
+            int count = 0;
+            while (read(fd, &t, sizeof(t)) == sizeof(t)) count++;
+            close(fd);
+            printf("%s: %d treasures\n", ent->d_name, count);
+        }
+    }
+    closedir(d);
 }
 
-void term_handler(int sig) {
-    stop = 1;
+void list_treasures(const char *hunt_id) {
+    char path[128];
+    snprintf(path, sizeof(path), "%s/%s", hunt_id, TREASURE_FILE);
+    int fd = open(path, O_RDONLY);
+    if (fd < 0) {
+        printf("Could not open hunt %s\n", hunt_id);
+        return;
+    }
+    struct Treasure t;
+    while (read(fd, &t, sizeof(t)) == sizeof(t)) {
+        printf("ID: %s | User: %s | GPS: %.2f,%.2f | Value: %d\n",
+               t.id, t.user, t.lat, t.lon, t.value);
+    }
+    close(fd);
 }
 
-time_t get_file_mtime(const char *path) {
-    struct stat attr;
-    if (stat(path, &attr) == -1) return 0;
-    return attr.st_mtime;
+void view_treasure(const char *hunt_id, const char *treasure_id) {
+    char path[128];
+    snprintf(path, sizeof(path), "%s/%s", hunt_id, TREASURE_FILE);
+    int fd = open(path, O_RDONLY);
+    if (fd < 0) {
+        printf("Could not open hunt %s\n", hunt_id);
+        return;
+    }
+    struct Treasure t;
+    while (read(fd, &t, sizeof(t)) == sizeof(t)) {
+        if (strcmp(t.id, treasure_id) == 0) {
+            printf("Treasure %s:\n  User: %s\n  GPS: %.2f, %.2f\n  Clue: %s\n  Value: %d\n",
+                   t.id, t.user, t.lat, t.lon, t.clue, t.value);
+            close(fd);
+            return;
+        }
+    }
+    printf("Treasure not found.\n");
+    close(fd);
 }
 
 int main() {
-    struct sigaction sa_usr1, sa_term;
-    sa_usr1.sa_handler = usr1_handler;
-    sigemptyset(&sa_usr1.sa_mask);
-    sa_usr1.sa_flags = 0;
-    sigaction(SIGUSR1, &sa_usr1, NULL);
+    char line[MAX_LINE];
+    while (fgets(line, sizeof(line), stdin)) {
+        line[strcspn(line, "\n")] = 0;
 
-    sa_term.sa_handler = term_handler;
-    sigemptyset(&sa_term.sa_mask);
-    sa_term.sa_flags = 0;
-    sigaction(SIGTERM, &sa_term, NULL);
-
-    // Citește PID-ul treasure_manager
-    FILE *pid_file = fopen(".manager_pid", "r");
-    if (!pid_file) {
-        perror("fopen .manager_pid");
-        return 1;
-    }
-    fscanf(pid_file, "%d", &manager_pid);
-    fclose(pid_file);
-    printf("Monitor: got treasure_manager PID = %d\n", manager_pid);
-
-    time_t last_mtime = get_file_mtime("hunt1/treasures.dat");
-
-    while (!stop) {
-        pause(); // Așteaptă comenzi sau semnal extern
-
-        if (got_command) {
-            FILE *f = fopen(".command.txt", "r");
-            if (f) {
-                char cmd[100];
-                fgets(cmd, sizeof(cmd), f);
-                cmd[strcspn(cmd, "\n")] = 0;
-                fclose(f);
-
-                if (strcmp(cmd, "list_hunts") == 0) {
-                    printf("Hunt1: 3 treasures\nHunt2: 5 treasures\n");
-                } else if (strcmp(cmd, "list_treasures") == 0) {
-                    printf("Treasure1: loc, descriere, etc.\n");
-                } else if (strcmp(cmd, "view_treasure") == 0) {
-                    printf("Viewing treasure details...\n");
-                }
-            }
-            got_command = 0;
+        if (strcmp(line, "list_hunts") == 0) {
+            list_hunts();
+        } else if (strncmp(line, "list_treasures", 15) == 0) {
+            char hunt[64];
+            if (sscanf(line, "list_treasures %63s", hunt) == 1)
+                list_treasures(hunt);
+        } else if (strncmp(line, "view_treasure", 13) == 0) {
+            char hunt[64], tid[16];
+            if (sscanf(line, "view_treasure %63s %15s", hunt, tid) == 2)
+                view_treasure(hunt, tid);
         }
-
-        // Verifică modificarea fisierului treasures.dat 
-        time_t current_mtime = get_file_mtime("hunt1/treasures.dat");
-        if (current_mtime != 0 && current_mtime != last_mtime) {
-            printf("Monitor: treasures.dat modified! Sending SIGUSR1 to manager.\n");
-            kill(manager_pid, SIGUSR1);
-            last_mtime = current_mtime;
-        }
-
-        
-        usleep(500000); 
     }
-
-    printf("Monitor exiting.\n");
+    // simulate delay
+    usleep(500000);
     return 0;
 }
